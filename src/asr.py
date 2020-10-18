@@ -11,8 +11,15 @@ from src.module import VGGExtractor, CNNExtractor, RNNLayer, ScaleDotAttention, 
 
 class ASR(nn.Module):
     ''' ASR model, including Encoder/Decoder(s)'''
-
-    def __init__(self, input_size, vocab_size, init_adadelta, ctc_weight, encoder, attention, decoder, emb_drop=0.0):
+    def __init__(self,
+                 input_size,
+                 vocab_size,
+                 init_adadelta,
+                 ctc_weight,
+                 encoder,
+                 attention,
+                 decoder,
+                 emb_drop=0.0):
         super(ASR, self).__init__()
 
         # Setup
@@ -31,18 +38,19 @@ class ASR(nn.Module):
             self.dec_dim = decoder['dim']
             self.pre_embed = nn.Embedding(vocab_size, self.dec_dim)
             self.embed_drop = nn.Dropout(emb_drop)
-            self.decoder = Decoder(
-                self.encoder.out_dim+self.dec_dim, vocab_size, **decoder)
-            query_dim = self.dec_dim*self.decoder.layer
-            self.attention = Attention(
-                self.encoder.out_dim, query_dim, **attention)
+            self.decoder = Decoder(self.encoder.out_dim + self.dec_dim,
+                                   vocab_size, **decoder)
+            query_dim = self.dec_dim * self.decoder.layer
+            self.attention = Attention(self.encoder.out_dim, query_dim,
+                                       **attention)
 
         # Init
         if init_adadelta:
             self.apply(init_weights)
             if self.enable_att:
                 for l in range(self.decoder.layer):
-                    bias = getattr(self.decoder.layers, 'bias_ih_l{}'.format(l))
+                    bias = getattr(self.decoder.layers,
+                                   'bias_ih_l{}'.format(l))
                     bias = init_gate(bias)
 
     def set_state(self, prev_state, prev_attn):
@@ -53,24 +61,35 @@ class ASR(nn.Module):
     def create_msg(self):
         # Messages for user
         msg = []
-        msg.append('Model spec.| Encoder\'s downsampling rate of time axis is {}.'.format(
-            self.encoder.sample_rate))
+        msg.append(
+            'Model spec.| Encoder\'s downsampling rate of time axis is {}.'.
+            format(self.encoder.sample_rate))
         if self.encoder.vgg:
             msg.append(
-                '           | VGG Extractor w/ time downsampling rate = 4 in encoder enabled.')
+                '           | VGG Extractor w/ time downsampling rate = 4 in encoder enabled.'
+            )
         if self.encoder.cnn:
             msg.append(
-                '           | CNN Extractor w/ time downsampling rate = 4 in encoder enabled.')
+                '           | CNN Extractor w/ time downsampling rate = 4 in encoder enabled.'
+            )
         if self.enable_ctc:
-            msg.append('           | CTC training on encoder enabled ( lambda = {}).'.format(
-                self.ctc_weight))
+            msg.append(
+                '           | CTC training on encoder enabled ( lambda = {}).'.
+                format(self.ctc_weight))
         if self.enable_att:
-            msg.append('           | {} attention decoder enabled ( lambda = {}).'.format(
-                self.attention.mode, 1-self.ctc_weight))
+            msg.append(
+                '           | {} attention decoder enabled ( lambda = {}).'.
+                format(self.attention.mode, 1 - self.ctc_weight))
         return msg
 
-    def forward(self, audio_feature, feature_len, decode_step, tf_rate=0.0, teacher=None,
-                emb_decoder=None, get_dec_state=False):
+    def forward(self,
+                audio_feature,
+                feature_len,
+                decode_step,
+                tf_rate=0.0,
+                teacher=None,
+                emb_decoder=None,
+                get_dec_state=False):
         '''
         Arguments
             audio_feature - [BxTxD] Acoustic feature with shape 
@@ -100,8 +119,10 @@ class ASR(nn.Module):
             # Init (init char = <SOS>, reset all rnn state and cell)
             self.decoder.init_state(bs)
             self.attention.reset_mem()
-            last_char = self.pre_embed(torch.zeros(
-                (bs), dtype=torch.long, device=encode_feature.device))
+            last_char = self.pre_embed(
+                torch.zeros((bs),
+                            dtype=torch.long,
+                            device=encode_feature.device))
             att_seq, output_seq = [], []
 
             # Preprocess data for teacher forcing
@@ -111,8 +132,8 @@ class ASR(nn.Module):
             # Decode
             for t in range(decode_step):
                 # Attend (inputs current state of first layer, encoded features)
-                attn, context = self.attention(
-                    self.decoder.get_query(), encode_feature, encode_len)
+                attn, context = self.attention(self.decoder.get_query(),
+                                               encode_feature, encode_len)
                 # Decode (inputs context + embedded last character)
                 decoder_input = torch.cat([last_char, context], dim=-1)
                 cur_char, d_state = self.decoder(decoder_input)
@@ -125,9 +146,11 @@ class ASR(nn.Module):
                     else:
                         # self-sampling (replace by argmax may be another choice)
                         with torch.no_grad():
-                            if (emb_decoder is not None) and emb_decoder.apply_fuse:
-                                _, cur_prob = emb_decoder(
-                                    d_state, cur_char, return_loss=False)
+                            if (emb_decoder
+                                    is not None) and emb_decoder.apply_fuse:
+                                _, cur_prob = emb_decoder(d_state,
+                                                          cur_char,
+                                                          return_loss=False)
                             else:
                                 cur_prob = cur_char.softmax(dim=-1)
                             sampled_char = Categorical(cur_prob).sample()
@@ -136,8 +159,9 @@ class ASR(nn.Module):
                 else:
                     # Inference stage
                     if (emb_decoder is not None) and emb_decoder.apply_fuse:
-                        _, cur_char = emb_decoder(
-                            d_state, cur_char, return_loss=False)
+                        _, cur_char = emb_decoder(d_state,
+                                                  cur_char,
+                                                  return_loss=False)
                     # argmax for inference
                     last_char = self.pre_embed(torch.argmax(cur_char, dim=-1))
 
@@ -148,7 +172,7 @@ class ASR(nn.Module):
                     dec_state.append(d_state)
 
             att_output = torch.stack(output_seq, dim=1)  # BxTxV
-            att_seq = torch.stack(att_seq, dim=2)       # BxNxDtxT
+            att_seq = torch.stack(att_seq, dim=2)  # BxNxDtxT
             if get_dec_state:
                 dec_state = torch.stack(dec_state, dim=1)
 
@@ -157,6 +181,7 @@ class ASR(nn.Module):
 
 class Decoder(nn.Module):
     ''' Decoder (a.k.a. Speller in LAS) '''
+
     # ToDo:　More elegant way to implement decoder
 
     def __init__(self, input_dim, vocab_size, module, dim, layer, dropout):
@@ -172,8 +197,11 @@ class Decoder(nn.Module):
         self.enable_cell = module == 'LSTM'
 
         # Modules
-        self.layers = getattr(nn, module)(
-            input_dim, dim, num_layers=layer, dropout=dropout, batch_first=True)
+        self.layers = getattr(nn, module)(input_dim,
+                                          dim,
+                                          num_layers=layer,
+                                          dropout=dropout,
+                                          batch_first=True)
         self.char_trans = nn.Linear(dim, vocab_size)
         self.final_dropout = nn.Dropout(dropout)
 
@@ -181,19 +209,21 @@ class Decoder(nn.Module):
         ''' Set all hidden states to zeros '''
         device = next(self.parameters()).device
         if self.enable_cell:
-            self.hidden_state = (torch.zeros((self.layer, bs, self.dim), device=device),
-                                 torch.zeros((self.layer, bs, self.dim), device=device))
+            self.hidden_state = (torch.zeros((self.layer, bs, self.dim),
+                                             device=device),
+                                 torch.zeros((self.layer, bs, self.dim),
+                                             device=device))
         else:
-            self.hidden_state = torch.zeros(
-                (self.layer, bs, self.dim), device=device)
+            self.hidden_state = torch.zeros((self.layer, bs, self.dim),
+                                            device=device)
         return self.get_state()
 
     def set_state(self, hidden_state):
         ''' Set all hidden states/cells, for decoding purpose'''
         device = next(self.parameters()).device
         if self.enable_cell:
-            self.hidden_state = (hidden_state[0].to(
-                device), hidden_state[1].to(device))
+            self.hidden_state = (hidden_state[0].to(device),
+                                 hidden_state[1].to(device))
         else:
             self.hidden_state = hidden_state.to(device)
 
@@ -207,9 +237,11 @@ class Decoder(nn.Module):
     def get_query(self):
         ''' Return state of all layers as query for attention '''
         if self.enable_cell:
-            return self.hidden_state[0].transpose(0, 1).reshape(-1, self.dim*self.layer)
+            return self.hidden_state[0].transpose(0, 1).reshape(
+                -1, self.dim * self.layer)
         else:
-            return self.hidden_state.transpose(0, 1).reshape(-1, self.dim*self.layer)
+            return self.hidden_state.transpose(0, 1).reshape(
+                -1, self.dim * self.layer)
 
     def forward(self, x):
         ''' Decode and transform into vocab '''
@@ -229,7 +261,6 @@ class Attention(nn.Module):
         Output: Attention score                    with shape [batch size, num head, T (attention score of each time step)]
                 Context vector                     with shape [batch size, encoder feature dimension]
                 (i.e. weighted (by attention score) sum of all timesteps T's feature) '''
-
     def __init__(self, v_dim, q_dim, mode, dim, num_head, temperature, v_proj,
                  loc_kernel_size, loc_kernel_num):
         super(Attention, self).__init__()
@@ -241,24 +272,25 @@ class Attention(nn.Module):
         self.num_head = num_head
 
         # Linear proj. before attention
-        self.proj_q = nn.Linear(q_dim, dim*num_head)
-        self.proj_k = nn.Linear(v_dim, dim*num_head)
+        self.proj_q = nn.Linear(q_dim, dim * num_head)
+        self.proj_k = nn.Linear(v_dim, dim * num_head)
         self.v_proj = v_proj
         if v_proj:
-            self.proj_v = nn.Linear(v_dim, v_dim*num_head)
+            self.proj_v = nn.Linear(v_dim, v_dim * num_head)
 
         # Attention
         if self.mode == 'dot':
             self.att_layer = ScaleDotAttention(temperature, self.num_head)
         elif self.mode == 'loc':
-            self.att_layer = LocationAwareAttention(
-                loc_kernel_size, loc_kernel_num, dim, num_head, temperature)
+            self.att_layer = LocationAwareAttention(loc_kernel_size,
+                                                    loc_kernel_num, dim,
+                                                    num_head, temperature)
         else:
             raise NotImplementedError
 
         # Layer for merging MHA
         if self.num_head > 1:
-            self.merge_head = nn.Linear(v_dim*num_head, v_dim)
+            self.merge_head = nn.Linear(v_dim * num_head, v_dim)
 
         # Stored feature
         self.key = None
@@ -279,8 +311,8 @@ class Attention(nn.Module):
         # Preprecessing
         bs, ts, _ = enc_feat.shape
         query = torch.tanh(self.proj_q(dec_state))
-        query = query.view(bs, self.num_head, self.dim).view(
-            bs*self.num_head, self.dim)  # BNxD
+        query = query.view(bs, self.num_head,
+                           self.dim).view(bs * self.num_head, self.dim)  # BNxD
 
         if self.key is None:
             # Maskout attention score for padded states
@@ -288,26 +320,29 @@ class Attention(nn.Module):
 
             # Store enc state to lower computational cost
             self.key = torch.tanh(self.proj_k(enc_feat))
-            self.value = torch.tanh(self.proj_v(
-                enc_feat)) if self.v_proj else enc_feat  # BxTxN
+            self.value = torch.tanh(
+                self.proj_v(enc_feat)) if self.v_proj else enc_feat  # BxTxN
 
             if self.num_head > 1:
-                self.key = self.key.view(bs, ts, self.num_head, self.dim).permute(
-                    0, 2, 1, 3)  # BxNxTxD
-                self.key = self.key.contiguous().view(bs*self.num_head, ts, self.dim)  # BNxTxD
+                self.key = self.key.view(bs, ts, self.num_head,
+                                         self.dim).permute(0, 2, 1,
+                                                           3)  # BxNxTxD
+                self.key = self.key.contiguous().view(bs * self.num_head, ts,
+                                                      self.dim)  # BNxTxD
                 if self.v_proj:
-                    self.value = self.value.view(
-                        bs, ts, self.num_head, self.v_dim).permute(0, 2, 1, 3)  # BxNxTxD
+                    self.value = self.value.view(bs, ts, self.num_head,
+                                                 self.v_dim).permute(
+                                                     0, 2, 1, 3)  # BxNxTxD
                     self.value = self.value.contiguous().view(
-                        bs*self.num_head, ts, self.v_dim)  # BNxTxD
+                        bs * self.num_head, ts, self.v_dim)  # BNxTxD
                 else:
                     self.value = self.value.repeat(self.num_head, 1, 1)
 
         # Calculate attention
         context, attn = self.att_layer(query, self.key, self.value)
         if self.num_head > 1:
-            context = context.view(
-                bs, self.num_head*self.v_dim)    # BNxD  -> BxND
+            context = context.view(bs,
+                                   self.num_head * self.v_dim)  # BNxD  -> BxND
             context = self.merge_head(context)  # BxD
 
         return attn, context
@@ -316,8 +351,8 @@ class Attention(nn.Module):
 class Encoder(nn.Module):
     ''' Encoder (a.k.a. Listener in LAS)
         Encodes acoustic feature to latent representation, see config file for more details.'''
-
-    def __init__(self, input_size, prenet, module, bidirection, dim, dropout, layer_norm, proj, sample_rate, sample_style):
+    def __init__(self, input_size, prenet, module, bidirection, dim, dropout,
+                 layer_norm, proj, sample_rate, sample_style):
         super(Encoder, self).__init__()
 
         # Hyper-parameters checking
@@ -338,20 +373,22 @@ class Encoder(nn.Module):
             vgg_extractor = VGGExtractor(input_size)
             module_list.append(vgg_extractor)
             input_dim = vgg_extractor.out_dim
-            self.sample_rate = self.sample_rate*4
+            self.sample_rate = self.sample_rate * 4
         if self.cnn:
             cnn_extractor = CNNExtractor(input_size, out_dim=dim[0])
             module_list.append(cnn_extractor)
             input_dim = cnn_extractor.out_dim
-            self.sample_rate = self.sample_rate*4
+            self.sample_rate = self.sample_rate * 4
 
         # Recurrent encoder
         if module in ['LSTM', 'GRU']:
             for l in range(num_layers):
-                module_list.append(RNNLayer(input_dim, module, dim[l], bidirection, dropout[l], layer_norm[l],
-                                            sample_rate[l], sample_style, proj[l]))
+                module_list.append(
+                    RNNLayer(input_dim, module, dim[l], bidirection,
+                             dropout[l], layer_norm[l], sample_rate[l],
+                             sample_style, proj[l]))
                 input_dim = module_list[-1].out_dim
-                self.sample_rate = self.sample_rate*sample_rate[l]
+                self.sample_rate = self.sample_rate * sample_rate[l]
         else:
             raise NotImplementedError
 

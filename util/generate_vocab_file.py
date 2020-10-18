@@ -19,7 +19,7 @@ def main(args):
 
         splib.SentencePieceTrainer.Train(cmd)
     else:
-        with open(args.input_file, "r") as f:
+        with open(args.input_file, "r", encoding='utf-8') as f:
             lines = [line.strip("\r\n ") for line in f]
         counter = Counter()
         if args.mode == "word":
@@ -63,3 +63,11 @@ if __name__ == "__main__":
         logging.warn("`vocab_size` is not used in `character` mode.")
 
     main(args)
+
+
+    '''
+    python .\util\generate_vocab_file.py 
+            --input_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\train\bopomo.trans.txt' 
+            --mode character 
+            --output_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\character.txt'   
+    '''
