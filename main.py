@@ -45,7 +45,7 @@ paras = parser.parse_args()
 setattr(paras, 'gpu', not paras.cpu)
 setattr(paras, 'pin_memory', not paras.no_pin)
 setattr(paras, 'verbose', not paras.no_msg)
-config = yaml.load(open(paras.config, 'r'), Loader=yaml.FullLoader)
+config = yaml.load(open(paras.config, 'r', encoding='utf-8'), Loader=yaml.FullLoader)
 
 np.random.seed(paras.seed)
 torch.manual_seed(paras.seed)
@@ -77,3 +77,5 @@ solver = Solver(config, paras, mode)
 solver.load_data()
 solver.set_model()
 solver.exec()
+
+# python main.py --config G:\src\NLP\2020HLP\End-to-end-ASR-Pytorch\config\libri\asr_dlhlp.yaml

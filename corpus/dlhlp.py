@@ -16,11 +16,12 @@ def read_text(file):
     '''Get transcription of target wave file, 
        it's somewhat redundant for accessing each txt multiplt times,
        but it works fine with multi-thread'''
-    src_file = '-'.join(file.split('-')[:-1]) + '.trans.txt'
-    #src_file = file.rsplit('/', 1)[0] + '/bopomo.trans.txt'
-    idx = file.split('/')[-1].split('.')[0]
+    #src_file = '-'.join(file.split('-')[:-1]) + '.trans.txt'
+    src_file = file.rsplit('\\', 1)[0] + '\\bopomo.trans.txt'                  # Linux: \
+    #src_file = r'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\train\bopomo.trans.txt'  #
+    idx = file.split('\\')[-1].split('.')[0]                                   # Linux: \
 
-    with open(src_file, 'r') as fp:
+    with open(src_file, 'r', encoding='utf-8') as fp:
         for line in fp:
             if idx == line.split(' ')[0]:
                 return line[:-1].split(' ', 1)[1]
@@ -35,7 +36,7 @@ class DlhlpDataset(Dataset):   # Libri-->Dlhlp
         # List all wave files
         file_list = []
         for s in split:
-            split_list = list(Path(join(path, s)).rglob("*.flac"))    # "*.flac" --> ".wav"
+            split_list = list(Path(join(path, s)).rglob("*.wav"))    # "*.flac" --> ".wav"
             assert len(split_list) > 0, "No data found @ {}".format(
                 join(path, s))
             file_list += split_list

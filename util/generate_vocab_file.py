@@ -5,7 +5,7 @@ from collections import Counter
 
 def main(args):
 
-    if args.mode == "subword":
+    if args.mode == "subword": 
         logging.warn("Subword model is based on `sentencepiece`.")
 
         import sentencepiece as splib
@@ -65,9 +65,5 @@ if __name__ == "__main__":
     main(args)
 
 
-    '''
-    python .\util\generate_vocab_file.py 
-            --input_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\train\bopomo.trans.txt' 
-            --mode character 
-            --output_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\character.txt'   
-    '''
+#python .\util\generate_vocab_file.py --input_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\train\bopomo.trans.txt' --mode character --output_file 'E:\DataSetRoot\NLP\2020HLP\HW1\DLHLP\train\bopomo_vocab_file.txt'
+
