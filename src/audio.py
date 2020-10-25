@@ -90,6 +90,7 @@ class Postprocess(torch.jit.ScriptModule):
 
 
 # TODO(Windqaq): make this scriptable
+# 抽取语音特征
 class ExtractAudioFeature(nn.Module):
     def __init__(self, mode="fbank", num_mel_bins=40, **kwargs):
         super(ExtractAudioFeature, self).__init__()

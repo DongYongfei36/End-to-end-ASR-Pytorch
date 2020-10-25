@@ -8,12 +8,13 @@ from torch.distributions.categorical import Categorical
 from src.util import init_weights, init_gate
 from src.module import VGGExtractor, CNNExtractor, RNNLayer, ScaleDotAttention, LocationAwareAttention
 
+# ASR：Automatic Speech Recognition
 
 class ASR(nn.Module):
     ''' ASR model, including Encoder/Decoder(s)'''
     def __init__(self,
                  input_size,
-                 vocab_size,
+                 vocab_size,            # 相当于ocr里面的字符集voc
                  init_adadelta,
                  ctc_weight,
                  encoder,
@@ -24,17 +25,17 @@ class ASR(nn.Module):
 
         # Setup
         assert 0 <= ctc_weight <= 1
-        self.vocab_size = vocab_size
-        self.ctc_weight = ctc_weight
-        self.enable_ctc = ctc_weight > 0
-        self.enable_att = ctc_weight != 1
+        self.vocab_size = vocab_size         # 识别
+        self.ctc_weight = ctc_weight         # ctc的权重
+        self.enable_ctc = ctc_weight > 0     # bool
+        self.enable_att = ctc_weight != 1    # bool
         self.lm = None
 
         # Modules
         self.encoder = Encoder(input_size, **encoder)
-        if self.enable_ctc:
+        if self.enable_ctc:                  # 开启ctc
             self.ctc_layer = nn.Linear(self.encoder.out_dim, vocab_size)
-        if self.enable_att:
+        if self.enable_att:                  # 开启attention
             self.dec_dim = decoder['dim']
             self.pre_embed = nn.Embedding(vocab_size, self.dec_dim)
             self.embed_drop = nn.Dropout(emb_drop)
@@ -66,19 +67,19 @@ class ASR(nn.Module):
             format(self.encoder.sample_rate))
         if self.encoder.vgg:
             msg.append(
-                '           | VGG Extractor w/ time downsampling rate = 4 in encoder enabled.'
+                '| VGG Extractor w/ time downsampling rate = 4 in encoder enabled.'
             )
         if self.encoder.cnn:
             msg.append(
-                '           | CNN Extractor w/ time downsampling rate = 4 in encoder enabled.'
+                '| CNN Extractor w/ time downsampling rate = 4 in encoder enabled.'
             )
         if self.enable_ctc:
             msg.append(
-                '           | CTC training on encoder enabled ( lambda = {}).'.
+                '| CTC training on encoder enabled ( lambda = {}).'.
                 format(self.ctc_weight))
         if self.enable_att:
             msg.append(
-                '           | {} attention decoder enabled ( lambda = {}).'.
+                '| {} attention decoder enabled ( lambda = {}).'.
                 format(self.attention.mode, 1 - self.ctc_weight))
         return msg
 
@@ -350,7 +351,9 @@ class Attention(nn.Module):
 
 class Encoder(nn.Module):
     ''' Encoder (a.k.a. Listener in LAS)
-        Encodes acoustic feature to latent representation, see config file for more details.'''
+        Encodes acoustic feature to latent representation, see config file for more details.
+    '''
+    # acoustic feature: 声音特征
     def __init__(self, input_size, prenet, module, bidirection, dim, dropout,
                  layer_norm, proj, sample_rate, sample_style):
         super(Encoder, self).__init__()

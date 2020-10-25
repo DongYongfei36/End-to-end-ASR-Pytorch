@@ -149,10 +149,15 @@ def load_dataset(n_jobs, use_gpu, pin_memory, ascending, corpus, audio, text):
     shuffle = (mode == 'train' and not ascending)
     drop_last = shuffle
     # Create data loader
+    #tr_set = DataLoader(tr_set, batch_size=tr_loader_bs, shuffle=shuffle, drop_last=drop_last, collate_fn=collect_tr,
+    #                    num_workers=n_jobs, pin_memory=use_gpu)
+    #dv_set = DataLoader(dv_set, batch_size=dv_loader_bs, shuffle=False, drop_last=False, collate_fn=collect_dv,
+    #                    num_workers=n_jobs, pin_memory=pin_memory)
     tr_set = DataLoader(tr_set, batch_size=tr_loader_bs, shuffle=shuffle, drop_last=drop_last, collate_fn=collect_tr,
-                        num_workers=n_jobs, pin_memory=use_gpu)
+                        num_workers=0, pin_memory=use_gpu)
     dv_set = DataLoader(dv_set, batch_size=dv_loader_bs, shuffle=False, drop_last=False, collate_fn=collect_dv,
-                        num_workers=n_jobs, pin_memory=pin_memory)
+                        num_workers=0, pin_memory=pin_memory)  #  EOFError: Ran out of input: num_workers=0 
+    # Messages to show
     # Messages to show
     data_msg.append('I/O spec.  | Audio feature = {}\t| feature dim = {}\t| Token type = {}\t| Vocab size = {}'
                     .format(audio['feat_type'], feat_dim, tokenizer.token_type, tokenizer.vocab_size))
