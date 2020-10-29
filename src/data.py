@@ -5,13 +5,14 @@ from src.audio import create_transform
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
+# 定义阈值
 # Batch size will be halfed if the longest wavefile surpasses threshold
 HALF_BATCHSIZE_AUDIO_LEN = 800
 # Note: Bucketing may cause random sampling to be biased (less sampled for those length > HALF_BATCHSIZE_AUDIO_LEN )
 HALF_BATCHSIZE_TEXT_LEN = 150
 
-
-def collect_audio_batch(batch, audio_transform, mode):
+# batch data
+def collect_audio_batch(batch, audio_transform, mode):    # mode: train, test
     '''Collects a batch, should be list of tuples (audio_path <str>, list of int token <list>) 
        e.g. [(file1,txt1),(file2,txt2),...] '''
 
@@ -20,10 +21,10 @@ def collect_audio_batch(batch, audio_transform, mode):
         batch = batch[0]
     # Make sure that batch size is reasonable
     first_len = audio_transform(str(batch[0][0])).shape[0]
-    if first_len > HALF_BATCHSIZE_AUDIO_LEN and mode == 'train':
+    if first_len > HALF_BATCHSIZE_AUDIO_LEN and mode == 'train':   # 如果大于阈值，则将batch的大小减半
         batch = batch[:len(batch)//2]
 
-    # Read batch
+    # Read batch 读取batch的数据
     file, audio_feat, audio_len, text = [], [], [], []
     with torch.no_grad():
         for b in batch:
@@ -32,10 +33,10 @@ def collect_audio_batch(batch, audio_transform, mode):
             audio_feat.append(feat)
             audio_len.append(len(feat))
             text.append(torch.LongTensor(b[1]))
-    # Descending audio length within each batch
+    # Descending audio length within each batch   降低每个batch的语音长度
     audio_len, file, audio_feat, text = zip(*[(feat_len, f_name, feat, txt)
                                               for feat_len, f_name, feat, txt in sorted(zip(audio_len, file, audio_feat, text), reverse=True, key=lambda x:x[0])])
-    # Zero-padding
+    # Zero-padding 和文字识别类似，也要对数据进行padding
     audio_feat = pad_sequence(audio_feat, batch_first=True)
     text = pad_sequence(text, batch_first=True)
     audio_len = torch.LongTensor(audio_len)
@@ -60,11 +61,11 @@ def collect_text_batch(batch, mode):
 
     return text
 
-
+# 创建数据集
 def create_dataset(tokenizer, ascending, name, path, bucketing, batch_size,
                    train_split=None, dev_split=None, test_split=None):
     ''' Interface for creating all kinds of dataset'''
-
+    # 定义数据类型的接口
     # Recognize corpus
     if name.lower() == "librispeech":
         from corpus.librispeech import LibriDataset as Dataset

@@ -132,12 +132,12 @@ class RNNLayer(nn.Module):
         #output,x_len = pad_packed_sequence(output,batch_first=True)
 
         # Normalizations
-        if self.layer_norm:
+        if self.layer_norm:     
             output = self.ln(output)
-        if self.dropout > 0:
+        if self.dropout > 0:    # 是否执行Dropout
             output = self.dp(output)
 
-        # Perform Downsampling
+        # Perform Downsampling  （Listen:Down Sampling）
         if self.sample_rate > 1:
             batch_size, timestep, feature_dim = output.shape
             x_len = x_len//self.sample_rate

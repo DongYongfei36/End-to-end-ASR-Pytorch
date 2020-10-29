@@ -282,7 +282,7 @@ class Attention(nn.Module):
         # Attention
         if self.mode == 'dot':
             self.att_layer = ScaleDotAttention(temperature, self.num_head)
-        elif self.mode == 'loc':
+        elif self.mode == 'loc':    # 位置感知attention，从左往右
             self.att_layer = LocationAwareAttention(loc_kernel_size,
                                                     loc_kernel_num, dim,
                                                     num_head, temperature)
